@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package book;
+
+option go_package = "/proto";
+
+import "google/protobuf/empty.proto";
+
+message Book {
+  int32 id = 1;
+  string title = 2;
+  string author = 3;
+  int32 year = 4;
+}
+
+message BookId {
+  int32 id = 1;
+}
+
+message BookList {
+  repeated Book books = 1;
+}
+
+service BookService {
+  rpc CreateBook(Book) returns (Book);
+  rpc GetBooks(google.protobuf.Empty) returns (BookList);
+  rpc GetBook(BookId) returns (Book);
+  rpc UpdateBook(Book) returns (Book);
+  rpc DeleteBook(BookId) returns (google.protobuf.Empty);
+}

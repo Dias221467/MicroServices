@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,13 +12,17 @@ import (
 	"github.com/Dias221467/MicroServices/internal/domain/models"
 	adapters "github.com/Dias221467/MicroServices/internal/interfaces/adapters/postgres"
 	"github.com/Dias221467/MicroServices/internal/usecases"
+	pb "github.com/Dias221467/MicroServices/proto" // Import the generated protobuf code
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"google.golang.org/grpc"
 )
+
+var logger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 func main() {
 	// Initialize the logger
-	logger := log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 	db, err := sql.Open("postgres", "postgresql://postgres:lbfc2005@localhost:5432/microservices?sslmode=disable")
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
@@ -118,5 +123,29 @@ func deleteBookHandler(usecase *usecases.BookUsecase) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type server struct {
+	usecase *usecases.BookUsecase
+	pb.UnimplementedBookServiceServer
+}
+
+func NewBookServiceServer(usecase *usecases.BookUsecase) pb.BookServiceServer {
+	return &server{usecase: usecase}
+}
+
+func runGRPCServer(usecase *usecases.BookUsecase) {
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		logger.Fatalf("Failed to listen on port 50051: %v", err)
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterBookServiceServer(s, NewBookServiceServer(usecase))
+
+	logger.Println("Starting gRPC server on port 50051...")
+	if err := s.Serve(lis); err != nil {
+		logger.Fatalf("Failed to serve gRPC server: %v", err)
 	}
 }
